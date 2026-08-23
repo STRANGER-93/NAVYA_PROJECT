@@ -1,0 +1,11 @@
+aafno router ko IPv4 address anusar,
+hamro frontend ko .env file change garnu parxa.
+
+EXPO_PUBLIC_API_URL=http://192.168.1.71:8000/api/v1
+
+"192.168.1.71" -> yo chai mero ghar ma laptop le use garirako IPv4 address ho.
+
+timi haru ko IP thaha pauna chai:
+terminal ma gayera: "ipconfig" lekhne tyai dekhauxa.
+
+Ani, replace garne API ko URL afno IPv4 address halnu parxa.

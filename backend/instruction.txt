@@ -1,0 +1,58 @@
+############  RUN THIS IN POWERSHELL  ##############
+
+& .\.venv\Scripts\Activate.ps1   #to activate virtual environment
+
+docker compose up -d db
+
+#Downloads the PostgreSQL image if needed.
+#Creates a PostgreSQL container.
+#Starts it in the background (-d means detached).
+
+
+
+alembic upgrade head      #It reads migration files and creates or updates database tables.
+
+
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000  #Start the FastAPI Server
+.\run-network.ps1                       # use this (this is working. mathi ko chalena)
+
+If we change the model later, replace the model and compatible preprocessing artifact in [app/ml_artifacts](D:\\PROJECT\\WOMEN_WELLNESS\\backend\\app\\ml_artifacts), then update the version label in [ml_prediction.py](D:\\PROJECT\\WOMEN_WELLNESS\\backend\\app\\services\\ml_prediction.py).
+
+
+------ RUNNING BACKEND --------
+
+docker compose up -d db
+.\.venv\Scripts\alembic.exe upgrade head
+.\run-backend.cmd
+
+
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
+.\run-network.ps1 -Network
+
+
+
+----------------------------------------------------------
+##### First-time backend setup ####
+From D:\PROJECT\WOMEN_WELLNESS\backend:
+Copy-Item .env.example .env
+
+& "C:\Users\ASUS\AppData\Local\Programs\Python\Python311\python.exe" -m venv .venv
+
+.\.venv\Scripts\python.exe -m pip install --upgrade pip
+.\.venv\Scripts\python.exe -m pip install -e .
+
+docker compose up -d db
+
+.\.venv\Scripts\alembic.exe upgrade head
+
+.\run-backend.cmd
+
+
+-------------------------------------------------------------------
+##### Every later run ###
+
+cd D:\PROJECT\WOMEN_WELLNESS\backend
+docker compose up -d db
+.\.venv\Scripts\alembic.exe upgrade head
+.\run-backend.cmd
+No PowerShell execution-policy change is needed for run-backend.cmd.
