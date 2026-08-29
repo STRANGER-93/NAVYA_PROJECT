@@ -39,14 +39,19 @@ class MoodInput(BaseModel): mood: str = Field(pattern="^(happy|sad|angry|anxious
 class MoodResponse(MoodInput): id: str; logged_at: datetime
 class MoodQuoteResponse(BaseModel): id: str; mood: str; quote: str
 class CyclePredictionInput(BaseModel):
-    age: int = Field(ge=8, le=100); bmi: float = Field(ge=10, le=80); age_at_menarche: int = Field(ge=7, le=25)
+    age: int = Field(ge=8, le=100); age_at_menarche: int = Field(ge=7, le=25)
+    height_cm: float = Field(ge=100, le=230); weight_kg: float = Field(ge=25, le=250)
+    # Retained for callers of the old endpoint; v2 calculates BMI from height and weight.
+    bmi: float | None = Field(default=None, ge=10, le=80)
     prev_1_cycle_length: int = Field(ge=15, le=60); prev_2_cycle_length: int = Field(ge=15, le=60); prev_3_cycle_length: int = Field(ge=15, le=60)
     prev_1_period_length: int = Field(ge=1, le=14); prev_2_period_length: int = Field(ge=1, le=14); prev_3_period_length: int = Field(ge=1, le=14)
     sleep_hours: float = Field(ge=1, le=24); stress_level: int = Field(ge=1, le=5); exercise_frequency: int = Field(ge=0, le=2)
     medication_contraceptive: int = Field(ge=0, le=1)
 class CyclePredictionResponse(BaseModel):
     predicted_cycle_length_days: float; predicted_period_length_days: float
-    cycle_prediction_source: str = "linear_regression"; period_prediction_source: str = "previous_period_average"
-    model_version: str = "Linear_Regression_cycle.pkl"
+    cycle_prediction_source: str = "xgboost"; period_prediction_source: str = "previous_period_average"
+    prediction_method: str; prediction_status: str
+    prediction_interval: dict[str, float | int] | None = None
+    model_version: str
 class ReadUpdate(BaseModel): read: bool
 class NotificationResponse(BaseModel): id: str; kind: str; message: str; created_at: datetime; read_at: datetime | None
