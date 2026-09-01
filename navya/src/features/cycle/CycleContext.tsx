@@ -1,5 +1,6 @@
 import React, { createContext, useMemo, useState } from "react";
 import { api } from "../../services/api";
+import { clearCyclePredictionCache } from "./predictionRepository";
 
 export type PeriodRecord = {
   id: string;
@@ -58,13 +59,13 @@ export function CycleProvider({ children }: { children: React.ReactNode }) {
       setPeriodEndedState(ended);
       if (!ended) setPeriodEndDate(null);
     },
-    setPeriodStartDate: (date) => { setPeriodStartDate(date); void api.post<{ id: string }>("/periods", { start_date: date.toISOString().slice(0, 10) }).then((record) => setCurrentPeriodId(record.id)).catch(() => undefined); },
+    setPeriodStartDate: (date) => { setPeriodStartDate(date); void api.post<{ id: string }>("/periods", { start_date: date.toISOString().slice(0, 10) }).then((record) => { setCurrentPeriodId(record.id); clearCyclePredictionCache(); }).catch(() => undefined); },
     setPeriodEndDate: (date) => setPeriodEndDate(date),
     completePeriod: (date) => {
       setPeriodEndDate(date);
       setPeriodEndedState(true);
       setPeriodStartedState(false);
-      if (currentPeriodId && periodStartDate) void api.patch(`/periods/${currentPeriodId}`, { start_date: periodStartDate.toISOString().slice(0, 10), end_date: date.toISOString().slice(0, 10) }).catch(() => undefined);
+      if (currentPeriodId && periodStartDate) void api.patch(`/periods/${currentPeriodId}`, { start_date: periodStartDate.toISOString().slice(0, 10), end_date: date.toISOString().slice(0, 10) }).then(clearCyclePredictionCache).catch(() => undefined);
     },
   }), [currentPeriodId, periodEnded, periodEndDate, periodStartDate, periodStarted]);
 

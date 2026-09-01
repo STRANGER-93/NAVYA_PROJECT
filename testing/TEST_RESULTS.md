@@ -35,6 +35,7 @@ The test run produced two dependency warnings only: FastAPI/Starlette's TestClie
 | Unequal setup history lengths were accepted and silently truncated. | `zip(cycle_lengths, period_lengths)` saved only the shorter list. | Added cross-field validation requiring equal list lengths. | `backend/app/schemas/api.py` | PASS |
 | A duplicate period start could reach the database unique constraint and become an unhandled server error. | Endpoint had no duplicate pre-check. | Added explicit owned-period check returning 409. | `backend/app/api/v1/router.py` | PASS |
 | Refresh expiry comparison could raise `TypeError` when a database returns a naive datetime. | Compared a potentially naive persisted timestamp to aware UTC. | Treat naive persisted expiry values as UTC before comparison. | `backend/app/api/v1/router.py` | PASS |
+| Dashboard showed the prediction-loading state whenever a tab navigation remounted the screen. | Dashboard and Cycle each held their own local prediction state and independently requested the same endpoint. | Added a session-scoped, deduplicated prediction cache shared by Dashboard and Cycle; it is invalidated after auth/setup and successful period changes. | `navya/src/features/cycle/predictionRepository.ts`, `navya/src/app/dashboard.tsx`, `navya/src/app/cycle.tsx`, `navya/src/features/auth/AuthContext.tsx`, `navya/src/features/cycle/CycleContext.tsx` | TypeScript PASS; manual Expo Go verification required |
 
 ## Frontend lint findings not changed
 

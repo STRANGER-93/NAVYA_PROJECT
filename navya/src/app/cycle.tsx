@@ -6,19 +6,19 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import BottomNavigation from "../components/navigation/BottomNavigation";
 import Colors from "../constants/colors";
 import { cyclePhase, startOfDay, useCycle } from "../features/cycle/CycleContext";
-import { predictionReliabilityMessage, type PredictionInterval } from "../features/cycle/predictionReliability";
-import { api } from "../services/api";
+import { predictionReliabilityMessage } from "../features/cycle/predictionReliability";
+import { getCachedCyclePrediction, getCyclePrediction, type CyclePrediction } from "../features/cycle/predictionRepository";
 
 type Tab = "overview" | "calendar" | "history" | "prediction";
-type Prediction = { predicted_cycle_length_days: number; predicted_period_length_days: number; last_period_start: string | null; next_expected_period: string | null; days_until_period: number | null; cycle_day: number | null; phase: string | null; prediction_method?: string; prediction_status?: string; prediction_interval?: PredictionInterval | null };
+type Prediction = CyclePrediction;
 const tabs: { id: Tab; label: string }[] = [{ id: "overview", label: "Overview" }, { id: "calendar", label: "Calendar" }, { id: "history", label: "History" }, { id: "prediction", label: "AI Prediction" }];
 const phaseTheme = { Menstrual: { label: "Period phase", color: "#F7C2CD", accent: "#D86A8C", description: "You may feel cramps, bloating, low energy, and mood changes.", tags: ["Cramps", "Bloating", "Low energy", "Mood changes"] }, Follicular: { label: "Follicular phase", color: "#CBEFD9", accent: "#4E9C72", description: "You may feel gradually increasing energy, improved mood, and better focus.", tags: ["More energy", "Better mood", "Better focus", "Motivation"] }, Ovulation: { label: "Ovulation phase", color: "#FFD7A4", accent: "#C87A20", description: "You may feel higher energy, increased confidence, mild pelvic discomfort, or increased discharge.", tags: ["High energy", "Confidence", "Mild cramps", "Increased discharge"] }, Luteal: { label: "Luteal phase", color: "#DDCCFA", accent: "#8B5BC0", description: "You may feel lower energy, mood changes, cravings, bloating, or breast tenderness.", tags: ["Lower energy", "Mood changes", "Cravings", "Bloating"] } } as const;
 type CalendarPhase = keyof typeof phaseTheme;
 type IconName = ComponentProps<typeof Ionicons>["name"];
 
 export default function CycleScreen() {
-  const params = useLocalSearchParams<{ tab?: Tab }>(); const [tab, setTab] = useState<Tab>(params.tab === "prediction" ? "prediction" : "overview"); const [prediction, setPrediction] = useState<Prediction | null>(null); const [error, setError] = useState<string | null>(null);
-  useEffect(() => { let active = true; api.get<Prediction>("/cycles/prediction").then((value) => active && setPrediction(value)).catch((exception) => active && setError(exception instanceof Error ? exception.message : "Prediction unavailable")); return () => { active = false; }; }, []);
+  const params = useLocalSearchParams<{ tab?: Tab }>(); const [tab, setTab] = useState<Tab>(params.tab === "prediction" ? "prediction" : "overview"); const [prediction, setPrediction] = useState<Prediction | null>(() => getCachedCyclePrediction()); const [error, setError] = useState<string | null>(null);
+  useEffect(() => { if (prediction) return; let active = true; getCyclePrediction().then((value) => active && setPrediction(value)).catch((exception) => active && setError(exception instanceof Error ? exception.message : "Prediction unavailable")); return () => { active = false; }; }, [prediction]);
   return <SafeAreaView style={styles.screen} edges={["top"]}><ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}><Text style={styles.title}>My Cycle</Text><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabRow}>{tabs.map((item) => <Pressable key={item.id} onPress={() => setTab(item.id)} style={[styles.tab, tab === item.id ? styles.tabActive : null]}><Text style={[styles.tabText, tab === item.id ? styles.tabTextActive : null]}>{item.label}</Text></Pressable>)}</ScrollView>{!prediction && !error ? <ActivityIndicator style={styles.loading} color="#A767CC" /> : null}{tab === "overview" ? <Overview prediction={prediction} error={error} /> : null}{tab === "calendar" ? <CalendarView prediction={prediction} /> : null}{tab === "history" ? <History /> : null}{tab === "prediction" ? <AiPrediction prediction={prediction} error={error} /> : null}</ScrollView><BottomNavigation activeTab="Cycle" /></SafeAreaView>;
 }
 

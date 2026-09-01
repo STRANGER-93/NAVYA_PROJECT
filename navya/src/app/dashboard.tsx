@@ -7,11 +7,10 @@ import BottomNavigation from "../components/navigation/BottomNavigation";
 import Colors from "../constants/colors";
 import CalendarPicker from "../features/setup/components/CalendarPicker";
 import { useCycle } from "../features/cycle/CycleContext";
-import { predictionLabel, predictionReliabilityMessage, type PredictionInterval } from "../features/cycle/predictionReliability";
+import { predictionLabel, predictionReliabilityMessage } from "../features/cycle/predictionReliability";
+import { getCachedCyclePrediction, getCyclePrediction, type CyclePrediction } from "../features/cycle/predictionRepository";
 import { useProfile } from "../features/profile/ProfileContext";
-import { api } from "../services/api";
 
-type Prediction = { predicted_cycle_length_days: number; next_expected_period: string | null; days_until_period: number | null; cycle_day: number | null; phase: string | null; prediction_method?: string; prediction_status?: string; prediction_interval?: PredictionInterval | null };
 const actions = [{ emoji: "💭", label: "Track Mood", route: "/mood" }, { emoji: "📓", label: "Journal", route: "/journal" }, { emoji: "📊", label: "Insights", route: "/cycle?tab=prediction" }];
 const moods = [{ emoji: "😊", label: "Happy", tint: "#FFF6CF" }, { emoji: "😔", label: "Sad", tint: "#EEF4FF" }, { emoji: "😡", label: "Angry", tint: "#FFF0EA" }, { emoji: "😰", label: "Anxious", tint: "#E9FFF5" }, { emoji: "😴", label: "Tired", tint: "#F1ECFF" }, { emoji: "😣", label: "Stressed", tint: "#FFF0FA" }];
 
@@ -22,8 +21,8 @@ export default function DashboardScreen() {
 }
 
 function PredictionCard() {
-  const [prediction, setPrediction] = useState<Prediction | null>(null);
-  useEffect(() => { let active = true; api.get<Prediction>("/cycles/prediction").then((value) => active && setPrediction(value)).catch(() => undefined); return () => { active = false; }; }, []);
+  const [prediction, setPrediction] = useState<CyclePrediction | null>(() => getCachedCyclePrediction());
+  useEffect(() => { if (prediction) return; let active = true; getCyclePrediction().then((value) => active && setPrediction(value)).catch(() => undefined); return () => { active = false; }; }, [prediction]);
   const date = prediction?.next_expected_period ? new Date(`${prediction.next_expected_period}T00:00:00`) : null;
   const cycleLength = prediction ? Math.round(prediction.predicted_cycle_length_days) : null;
   const title = prediction?.days_until_period !== undefined && prediction?.days_until_period !== null ? prediction.days_until_period > 0 ? `Period expected in ${prediction.days_until_period} days` : "Period expected today" : "Preparing your prediction…";
