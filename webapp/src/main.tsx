@@ -23,18 +23,25 @@ function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
   return <svg {...common}>{paths[name]}</svg>;
 }
 
-const apkUrl: string | null = null;
+const apkUrl = import.meta.env.VITE_NAVYA_APK_URL || "/navya.apk";
 function DownloadLink({ className = "", children }: { className?: string; children: ReactNode }) {
   return <a className={className} href={apkUrl || "#download"} {...(apkUrl ? { download: true } : {})}>{children}</a>;
 }
-function Logo() { return <a className="logo" href="#home" aria-label="NAVYA home"><span className="logo-mark"><i /></span><span>NAVYA</span></a>; }
+function Logo() {
+  return <a className="logo" href="#home" aria-label="NAVYA home">
+    <img className="logo-mark" src="/navya-logo.png" alt="NAVYA logo" />
+    <span>NAVYA</span>
+  </a>;
+}
 
 function Nav() {
   const [open, setOpen] = useState(false); const links = ["Home", "About", "Features", "Download"];
   return <header><nav className="nav"><Logo /><div className="desktop-links">{links.map(x => <a href={`#${x.toLowerCase()}`} key={x}>{x}</a>)}<DownloadLink className="button small"><Icon name="download" size={16}/>Download App</DownloadLink></div><button className="menu-button" onClick={() => setOpen(!open)} aria-label="Toggle menu"><Icon name={open ? "close" : "menu"} /></button></nav>{open && <div className="mobile-links">{links.map(x => <a href={`#${x.toLowerCase()}`} key={x} onClick={() => setOpen(false)}>{x}</a>)}<DownloadLink className="button"><Icon name="download" size={16}/>Download App</DownloadLink></div>}</header>
 }
 
-function PhoneMockup() { return <div className="phone-wrap"><div className="glow one"/><div className="glow two"/><div className="phone"><div className="speaker"/><div className="phone-screen"><b className="app-name">NAVYA</b><h3>Good morning, Asha</h3><div className="cycle"><div><strong>Day 12</strong><small>FOLLICULAR PHASE</small></div></div><div className="quick"><span><Icon name="drop" size={16}/><small>Flow</small></span><span><Icon name="heart" size={16}/><small>Mood</small></span><span><Icon name="sparkle" size={16}/><small>Notes</small></span></div><div className="prediction"><Icon name="calendar" size={16}/><span>Next period predicted in 16 days</span></div></div></div></div>; }
+function PhoneMockup() {
+  return <div className="phone-wrap"><div className="glow one"/><div className="glow two"/><div className="phone"><div className="speaker"/><div className="phone-screen dashboard-screen"><img src="/navya-dashboard.jpg" alt="NAVYA app dashboard" /></div></div></div>;
+}
 
 const about = [["calendar", "Cycle clarity", "Log periods and see your cycle at a glance."], ["heart", "Wellness first", "Phase-aware guidance for everyday wellbeing."], ["shield", "Personal & private", "A calm, simple space that belongs to you."]] as const;
 const features = [["drop", "Period & Cycle Tracking", "Track menstrual cycles and understand important dates in your cycle."], ["sparkle", "Cycle Prediction", "Get useful predictions based on your previous cycle information."], ["heart", "Wellness Insights", "Understand your current menstrual phase and receive useful wellness information."], ["mood", "Mood Tracking", "Keep track of your moods and receive supportive wellness content."], ["journal", "Personal Journal", "Maintain personal journal entries in a simple and private experience."], ["calendar", "Simple Calendar", "View cycle phases, predicted dates, and important menstrual information through an intuitive calendar."]] as const;
