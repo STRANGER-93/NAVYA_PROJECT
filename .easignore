@@ -1,0 +1,12 @@
+# EAS is invoked from navya/, but this Git repository also contains the backend.
+# Only the Expo app is required to build the Android artifact.
+backend/
+testing/
+.git/
+ff.txt
+NAVYA_DEPLOYMENT_AND_TEAM_GUIDE.md
+
+# Local Expo and dependency artifacts are installed during the EAS build.
+navya/node_modules/
+navya/.expo/
+navya/.env
