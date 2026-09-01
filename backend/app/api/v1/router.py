@@ -35,7 +35,8 @@ async def login(payload: LoginInput, db: DB):
 @router.post("/auth/refresh", response_model=TokenResponse)
 async def refresh(payload: RefreshInput, db: DB):
     record = await db.scalar(select(RefreshToken).where(RefreshToken.token_hash == hash_token(payload.refresh_token), RefreshToken.revoked_at.is_(None)))
-    if not record or record.expires_at < datetime.now(timezone.utc): raise HTTPException(401, "Refresh token is invalid or expired")
+    expiry = record.expires_at.replace(tzinfo=timezone.utc) if record and record.expires_at.tzinfo is None else record.expires_at if record else None
+    if not record or expiry < datetime.now(timezone.utc): raise HTTPException(401, "Refresh token is invalid or expired")
     user = await db.get(User, record.user_id); record.revoked_at = datetime.now(timezone.utc); await db.flush()
     return await tokens(db, user)
 
@@ -71,6 +72,8 @@ async def periods(user: CurrentUser, db: DB): return (await db.scalars(select(Pe
 @router.post("/periods", response_model=PeriodResponse, status_code=201)
 async def create_period(payload: PeriodInput, user: CurrentUser, db: DB):
     if payload.end_date and payload.end_date < payload.start_date: raise HTTPException(422, "End date cannot precede start date")
+    if await db.scalar(select(Period).where(Period.user_id == user.id, Period.start_date == payload.start_date)):
+        raise HTTPException(409, "A period record already exists for this start date")
     period = Period(user_id=user.id, **payload.model_dump()); db.add(period); await db.commit(); await db.refresh(period); return period
 @router.patch("/periods/{period_id}", response_model=PeriodResponse)
 async def update_period(period_id: str, payload: PeriodInput, user: CurrentUser, db: DB):

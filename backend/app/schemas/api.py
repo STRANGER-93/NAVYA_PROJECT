@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
 class RegisterInput(BaseModel):
     full_name: str = Field(min_length=1, max_length=150)
@@ -31,6 +31,11 @@ class SetupInput(ProfileInput):
     def period_range(cls, value):
         if any(day < 1 or day > 14 for day in value): raise ValueError("Period lengths must be between 1 and 14 days")
         return value
+    @model_validator(mode="after")
+    def history_lengths_match(self):
+        if len(self.cycle_lengths) != len(self.period_lengths):
+            raise ValueError("Cycle lengths and period lengths must contain the same number of entries")
+        return self
 class ProfileResponse(ProfileInput): email: EmailStr; setup_completed: bool
 
 class PeriodInput(BaseModel): start_date: date; end_date: date | None = None

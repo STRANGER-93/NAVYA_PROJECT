@@ -12,3 +12,8 @@ joblib==1.5.3
 scikit-learn==1.9.0
 xgboost==3.2.0
 pandas<4.0,>=2.2
+
+[test]
+pytest<9.0,>=8.0
+pytest-asyncio<1.0,>=0.24
+aiosqlite<1.0,>=0.20
