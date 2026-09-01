@@ -33,7 +33,7 @@ async function refreshAccessToken(): Promise<string | null> {
 }
 
 async function send(path: string, init: RequestInit, token: string | null): Promise<Response> {
-  const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), 15_000);
+  const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), 60_000);
   try { return await fetch(`${baseUrl}${path}`, { ...init, signal: controller.signal, headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}), ...init.headers } }); }
   catch { throw new ApiError("Could not reach NAVYA. Check that the backend is running and that this device is on the same Wi-Fi network.", 0); }
   finally { clearTimeout(timeout); }
