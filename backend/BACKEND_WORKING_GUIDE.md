@@ -122,46 +122,38 @@ The dashboard, cycle overview, calendar, and AI prediction page use this respons
 
 ## 7. Machine-learning model integration
 
-The backend currently uses:
+The backend uses the versioned v2 artifacts:
 
 ```text
-app/ml_artifacts/Linear_Regression_cycle.pkl
-app/ml_artifacts/cycle_preprocessing_pipeline.pkl
+app/ml_artifacts/cycle_length_model_v2_xgboost.joblib
+app/ml_artifacts/cycle_length_model_v2_xgboost_metadata.json
 ```
 
-The linear-regression model predicts the **next cycle length**. The period duration is calculated as the arithmetic average of the three most recent recorded period lengths.
+The self-contained XGBoost pipeline predicts the **next cycle length**. The period duration is calculated as the arithmetic average of up to the three most recent recorded period lengths. The v1 linear-regression artifacts are retained in `app/ml_artifacts/legacy/`.
 
 ### Feature order
 
-The model receives the following raw features before preprocessing:
+The model receives these 18 raw features. The serialized pipeline owns preprocessing, so the backend does not scale, encode, or transform the feature frame separately:
 
 ```text
-Age
-BMI
-Age_At_Menarche
-Prev_1_Cycle_Length
-Prev_2_Cycle_Length
-Prev_3_Cycle_Length
-Prev_1_Period_Length
-Prev_2_Period_Length
-Prev_3_Period_Length
-Sleep_Hours
-Stress_Level
-Exercise_Frequency
-Medication_Contraceptive
+age_years, menarche_age, height_cm, weight_kg, bmi, sleep_hours,
+stress_level, exercise_frequency, uses_medication_or_contraceptive,
+prev_cycle_1, prev_cycle_2, prev_cycle_3, avg_previous_cycle_length,
+std_previous_cycle_length, prev_period_1, prev_period_2, prev_period_3,
+avg_previous_period_length
 ```
 
-The service constructs these values from the authenticated user's saved data. The preprocessing pipeline is loaded together with the model to ensure that the exact transformations used during training are applied during inference.
+Cycle history is supplied oldest-to-newest to the feature builder. It explicitly reverses the latest three so `prev_cycle_1` is the most recently completed cycle. The metadata defines a 17–39 day supported range and a 90% split-conformal interval with `q_hat_days = 2.172985076904297`. Histories outside that range use a labelled history-average fallback instead of an extrapolated model prediction.
 
 ### Replacing the model later
 
 The application is prepared for model replacement. To change the model:
 
-1. Replace the model `.pkl` artifact in `app/ml_artifacts/`.
-2. Replace the corresponding preprocessing pipeline if it changed.
-3. Keep the feature order compatible, or update the feature-building code in `app/services/ml_prediction.py`.
-4. Update the model version label returned by the API.
-5. Test `POST /api/v1/cycles/ml-prediction` and the saved-profile prediction endpoint.
+1. Preserve the previous artifact in `app/ml_artifacts/legacy/` with a clear versioned name.
+2. Install the new artifact and its metadata with a clear versioned name.
+3. Update `app/services/ml_prediction.py` only after auditing the exact exported feature contract.
+4. Add any model-runtime dependency needed to load the serialized artifact.
+5. Test `backend/tests/test_cycle_model_integration.py`, the direct endpoint, and the saved-profile prediction endpoint.
 
 ## 8. Main API groups
 

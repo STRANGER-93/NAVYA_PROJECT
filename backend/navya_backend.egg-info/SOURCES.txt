@@ -17,3 +17,4 @@ navya_backend.egg-info/SOURCES.txt
 navya_backend.egg-info/dependency_links.txt
 navya_backend.egg-info/requires.txt
 navya_backend.egg-info/top_level.txt
+tests/test_cycle_model_integration.py

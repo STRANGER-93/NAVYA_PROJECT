@@ -30,7 +30,9 @@ For Expo Go on a physical phone, ensure it is on the same Wi-Fi network as this 
 
 ## Cycle prediction
 
-`POST /api/v1/cycles/ml-prediction` is authenticated and uses `Linear_Regression_cycle.pkl` plus `cycle_preprocessing_pipeline.pkl`. It expects the documented 13 raw features in its request schema. The response gives the model-predicted cycle length and the arithmetic mean of the three previous period lengths. To replace the cycle model later, replace both compatible artifacts in `app/ml_artifacts/` and update the model version label in `app/services/ml_prediction.py`.
+`POST /api/v1/cycles/ml-prediction` is authenticated and uses the self-contained XGBoost pipeline at `app/ml_artifacts/cycle_length_model_v2_xgboost.joblib`, together with `cycle_length_model_v2_xgboost_metadata.json`. The model expects 18 raw features; its preprocessing is already included in the exported pipeline. The direct endpoint now requires `height_cm` and `weight_kg` so that the backend can calculate BMI with the same formula used in training. The old `bmi` field remains accepted for compatibility but is not used for v2 inference.
+
+`GET /api/v1/cycles/prediction` keeps its existing response fields and adds `prediction_method`, `prediction_status`, `prediction_interval`, and `model_version`. It uses the ML model only when three recent cycle histories are within the metadata-supported 17–39-day range; otherwise it returns a clearly labelled history or population fallback. The previous linear-regression artifacts are preserved in `app/ml_artifacts/legacy/`.
 
 For Expo, copy `D:\PROJECT\WOMEN_WELLNESS\navya\.env.example` to `.env`. On a physical device, replace `10.0.2.2` with the development machine's LAN IP and include that origin in the backend `CORS_ORIGINS` setting.
 
