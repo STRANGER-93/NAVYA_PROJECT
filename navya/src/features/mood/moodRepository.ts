@@ -12,7 +12,4 @@ export const moodConfigurations: Record<MoodId, MoodConfig> = {
   stressed: { id: "stressed", label: "Stressed", emoji: "😣", color: "#FFF0FA", activity: "breathing", activityLabel: "Try a breathing exercise" },
 };
 
-export const weeklyMoodHistory: (MoodId | null)[] = ["happy", "tired", "anxious", "happy", "angry", "happy", "happy"];
-export const monthlyMoodHistory: Record<number, MoodId> = { 2: "happy", 3: "tired", 5: "anxious", 7: "happy", 10: "angry", 12: "happy", 15: "sad", 18: "stressed", 21: "happy" };
-
 export const getMoodConfiguration = (value: string | undefined) => moodConfigurations[(value as MoodId) in moodConfigurations ? value as MoodId : "happy"];
