@@ -8,6 +8,18 @@ type StoredSession = { accessToken?: string; refreshToken?: string; access_token
 
 export class ApiError extends Error { constructor(message: string, public status: number) { super(message); } }
 
+function apiErrorMessage(detail: unknown) {
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) return detail.map((issue) => {
+    if (issue && typeof issue === "object" && "msg" in issue) {
+      const field = Array.isArray((issue as { loc?: unknown }).loc) ? (issue as { loc: unknown[] }).loc.filter((part) => part !== "body").join(".") : "";
+      return field ? `${field}: ${(issue as { msg: string }).msg}` : (issue as { msg: string }).msg;
+    }
+    return "Invalid information provided.";
+  }).join("\n");
+  return "Request failed";
+}
+
 let refreshInFlight: Promise<string | null> | null = null;
 
 async function readSession(): Promise<StoredSession | null> {
@@ -46,7 +58,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     const freshToken = await refreshAccessToken();
     if (freshToken) response = await send(path, init, freshToken);
   }
-  if (!response.ok) { const body = await response.json().catch(() => ({})); throw new ApiError(body.detail ?? "Request failed", response.status); }
+  if (!response.ok) { const body = await response.json().catch(() => ({})); throw new ApiError(apiErrorMessage(body.detail), response.status); }
   return response.status === 204 ? undefined as T : response.json();
 }
 

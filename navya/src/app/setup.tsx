@@ -13,6 +13,7 @@ import StressLevelSelector from "../features/setup/components/StressLevelSelecto
 import { useProfile } from "../features/profile/ProfileContext";
 import { useAuth } from "../features/auth/AuthContext";
 import { api } from "../services/api";
+import { localCalendarDate, localDateString } from "../utils/localDate";
 import { KeyboardAwareScrollView, KeyboardAwareTextInput as TextInput } from "../components/layout/KeyboardAwareScrollView";
 
 const cycleInfo = [
@@ -72,9 +73,10 @@ export default function SetupScreen() {
       const inches = Number(heightInches);
       const weight = Number(weightKg);
       if (currentAge === null || currentAge < 8 || currentAge > 100) return "Please select a valid date of birth.";
-      if (!menarcheAge || firstPeriodAge < 7 || firstPeriodAge > currentAge) return "Please enter a valid age at menarche.";
-      if (!heightFeet || feet <= 0 || heightInches === "" || inches < 0 || inches > 11) return "Enter a valid height in feet and inches (0–11 inches).";
-      if (!weightKg || weight <= 0) return "Please enter a valid weight in kilograms.";
+      if (!menarcheAge || firstPeriodAge < 8 || firstPeriodAge > currentAge) return "Please enter an age at menarche between 8 and your current age.";
+      const heightCm = (feet * 12 + inches) * 2.54;
+      if (!heightFeet || feet <= 0 || heightInches === "" || inches < 0 || inches > 11 || heightCm < 50 || heightCm > 250) return "Enter a valid height between 50 and 250 cm.";
+      if (!weightKg || weight < 20 || weight > 300) return "Please enter a valid weight between 20 and 300 kg.";
       if (bmi === null) return "We could not calculate your BMI. Please check your height and weight.";
     }
 
@@ -104,7 +106,7 @@ export default function SetupScreen() {
     if (bmi === null) return;
 
     try {
-      await api.put("/profile/setup", { last_period_start_date: lastPeriodDate?.toISOString().slice(0, 10), date_of_birth: dateOfBirth?.toISOString().slice(0, 10), menarche_age: Number(menarcheAge), height_cm: (Number(heightFeet) * 12 + Number(heightInches)) * 2.54, weight_kg: Number(weightKg), sleep_hours: Number(sleepHours), stress_level: stressLevel, exercise_frequency: exerciseFrequency, uses_medication_or_contraceptive: medicationContraceptive === 1, cycle_lengths: cycleLengths.map(Number), period_lengths: periodLengths.map(Number) });
+      await api.put("/profile/setup", { last_period_start_date: localDateString(lastPeriodDate!), date_of_birth: localDateString(dateOfBirth!), menarche_age: Number(menarcheAge), height_cm: (Number(heightFeet) * 12 + Number(heightInches)) * 2.54, weight_kg: Number(weightKg), sleep_hours: Number(sleepHours), stress_level: stressLevel, exercise_frequency: exerciseFrequency, uses_medication_or_contraceptive: medicationContraceptive === 1, cycle_lengths: cycleLengths.map(Number), period_lengths: periodLengths.map(Number) });
       await updateSetupState(true);
       updateProfile({ lastPeriodDate, cycleLengths, periodLengths, dateOfBirth, menarcheAge, heightFeet, heightInches, weightKg, sleepHours, stressLevel, exerciseFrequency, medicationContraceptive });
       router.replace("/setup-complete");
@@ -188,7 +190,7 @@ function calculateBmi(feetText: string, inchesText: string, weightText: string):
 }
 
 function calculateAge(dateOfBirth: Date | null): number | null { if (!dateOfBirth) return null; const now = new Date(); let age = now.getFullYear() - dateOfBirth.getFullYear(); const hasNotHadBirthday = now.getMonth() < dateOfBirth.getMonth() || (now.getMonth() === dateOfBirth.getMonth() && now.getDate() < dateOfBirth.getDate()); if (hasNotHadBirthday) age -= 1; return age; }
-function birthDateDefault() { const today = new Date(); return new Date(today.getFullYear() - 25, today.getMonth(), today.getDate()); }
+function birthDateDefault() { const today = new Date(); return localCalendarDate(today.getFullYear() - 25, today.getMonth(), today.getDate()); }
 
 function isEveryValueInRange(values: string[], min: number, max: number) {
   return values.every((value) => Boolean(value) && Number(value) >= min && Number(value) <= max);

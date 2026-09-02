@@ -1,5 +1,6 @@
 import React, { createContext, useEffect, useMemo, useState } from "react";
 import { api } from "../../services/api";
+import { localDateFromString, localDateString } from "../../utils/localDate";
 import { useAuth } from "../auth/AuthContext";
 
 export type ProfileData = { name: string; email: string; lastPeriodDate: Date | null; cycleLengths: string[]; periodLengths: string[]; dateOfBirth: Date | null; menarcheAge: string; heightFeet: string; heightInches: string; weightKg: string; sleepHours: string; stressLevel: number; exerciseFrequency: number | null; medicationContraceptive: number | null; avatarData: string | null };
@@ -17,7 +18,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       const remote = await api.patch<any>("/profile", {
         ...(values.name !== undefined ? { full_name: values.name } : {}),
         ...(values.avatarData !== undefined ? { avatar_data: values.avatarData } : {}),
-        ...(values.dateOfBirth !== undefined ? { date_of_birth: values.dateOfBirth?.toISOString().slice(0, 10) } : {}),
+        ...(values.dateOfBirth !== undefined ? { date_of_birth: values.dateOfBirth ? localDateString(values.dateOfBirth) : null } : {}),
         ...(values.menarcheAge !== undefined ? { menarche_age: Number(values.menarcheAge) || null } : {}),
         ...((values.heightFeet !== undefined || values.heightInches !== undefined) ? { height_cm: ((Number(feet) * 12 + Number(inches)) * 2.54) || null } : {}),
         ...(values.weightKg !== undefined ? { weight_kg: Number(values.weightKg) || null } : {}),
@@ -31,5 +32,5 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
   } }), [profile]);
   return <ProfileContext.Provider value={value}>{children}</ProfileContext.Provider>;
 }
-function fromApi(remote: any, current: ProfileData): ProfileData { const totalInches = (Number(remote.height_cm) || 0) / 2.54; return { ...current, name: remote.full_name ?? current.name, email: remote.email ?? current.email, dateOfBirth: remote.date_of_birth ? new Date(remote.date_of_birth) : null, menarcheAge: remote.menarche_age?.toString() ?? "", heightFeet: totalInches ? Math.floor(totalInches / 12).toString() : "", heightInches: totalInches ? Math.round(totalInches % 12).toString() : "", weightKg: remote.weight_kg?.toString() ?? "", sleepHours: remote.sleep_hours?.toString() ?? current.sleepHours, stressLevel: remote.stress_level ?? current.stressLevel, exerciseFrequency: remote.exercise_frequency ?? null, medicationContraceptive: remote.uses_medication_or_contraceptive === null ? null : remote.uses_medication_or_contraceptive ? 1 : 0, avatarData: remote.avatar_data ?? null }; }
+function fromApi(remote: any, current: ProfileData): ProfileData { const totalInches = (Number(remote.height_cm) || 0) / 2.54; return { ...current, name: remote.full_name ?? current.name, email: remote.email ?? current.email, dateOfBirth: remote.date_of_birth ? localDateFromString(remote.date_of_birth) : null, menarcheAge: remote.menarche_age?.toString() ?? "", heightFeet: totalInches ? Math.floor(totalInches / 12).toString() : "", heightInches: totalInches ? Math.round(totalInches % 12).toString() : "", weightKg: remote.weight_kg?.toString() ?? "", sleepHours: remote.sleep_hours?.toString() ?? current.sleepHours, stressLevel: remote.stress_level ?? current.stressLevel, exerciseFrequency: remote.exercise_frequency ?? null, medicationContraceptive: remote.uses_medication_or_contraceptive === null ? null : remote.uses_medication_or_contraceptive ? 1 : 0, avatarData: remote.avatar_data ?? null }; }
 export function useProfile() { const context = React.use(ProfileContext); if (!context) throw new Error("useProfile must be used within ProfileProvider."); return context; }

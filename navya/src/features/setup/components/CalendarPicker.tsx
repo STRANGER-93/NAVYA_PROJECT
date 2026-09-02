@@ -3,6 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import Colors from "../../../constants/colors";
+import { localCalendarDate } from "../../../utils/localDate";
 
 type CalendarPickerProps = {
   value: Date | null;
@@ -25,17 +26,16 @@ const months = ["January", "February", "March", "April", "May", "June", "July", 
 
 export default function CalendarPicker({ value, onChange, initialViewDate, title = "Select date", visible: controlledVisible, hideTrigger = false, onDismiss }: CalendarPickerProps) {
   const [isVisible, setIsVisible] = useState(false);
-  const [viewDate, setViewDate] = useState(value ?? initialViewDate ?? new Date());
+  const [viewDate, setViewDate] = useState(value ?? initialViewDate ?? localCalendarDate(new Date().getFullYear(), new Date().getMonth(), new Date().getDate()));
   const [showMonthYearSelector, setShowMonthYearSelector] = useState(false);
   const selectedKey = value ? toDateKey(value) : null;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = localCalendarDate(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
   const visible = controlledVisible ?? isVisible;
   const closeCalendar = () => { setIsVisible(false); onDismiss?.(); };
 
   useEffect(() => {
     if (controlledVisible) {
-      setViewDate(value ?? initialViewDate ?? new Date());
+      setViewDate(value ?? initialViewDate ?? today);
       setShowMonthYearSelector(false);
     }
   }, [controlledVisible, initialViewDate, value]);
@@ -45,12 +45,12 @@ export default function CalendarPicker({ value, onChange, initialViewDate, title
     const numberOfDays = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 0).getDate();
     return Array.from({ length: 42 }, (_, index) => {
       const day = index - firstDay + 1;
-      return day > 0 && day <= numberOfDays ? new Date(viewDate.getFullYear(), viewDate.getMonth(), day) : null;
+      return day > 0 && day <= numberOfDays ? localCalendarDate(viewDate.getFullYear(), viewDate.getMonth(), day) : null;
     });
   }, [viewDate]);
 
   const openCalendar = () => {
-    setViewDate(value ?? initialViewDate ?? new Date());
+    setViewDate(value ?? initialViewDate ?? today);
     setShowMonthYearSelector(false);
     setIsVisible(true);
   };
@@ -74,11 +74,11 @@ export default function CalendarPicker({ value, onChange, initialViewDate, title
               </Pressable>
             </View>
             {showMonthYearSelector ? <MonthYearSelector viewDate={viewDate} onChange={setViewDate} onDone={() => setShowMonthYearSelector(false)} /> : <><View style={styles.monthHeader}>
-              <Pressable accessibilityRole="button" accessibilityLabel="Previous month" onPress={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1))} style={styles.monthButton}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Previous month" onPress={() => setViewDate(localCalendarDate(viewDate.getFullYear(), viewDate.getMonth() - 1, 1))} style={styles.monthButton}>
                 <Ionicons name="chevron-back" size={22} color={Colors.darkPurple} />
               </Pressable>
               <Pressable accessibilityRole="button" accessibilityLabel="Choose month and year" onPress={() => setShowMonthYearSelector(true)}><Text style={styles.monthTitle}>{viewDate.toLocaleDateString("en-US", { month: "long", year: "numeric" })}</Text></Pressable>
-              <Pressable accessibilityRole="button" accessibilityLabel="Next month" disabled={viewDate.getFullYear() === today.getFullYear() && viewDate.getMonth() === today.getMonth()} onPress={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1))} style={styles.monthButton}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Next month" disabled={viewDate.getFullYear() === today.getFullYear() && viewDate.getMonth() === today.getMonth()} onPress={() => setViewDate(localCalendarDate(viewDate.getFullYear(), viewDate.getMonth() + 1, 1))} style={styles.monthButton}>
                 <Ionicons name="chevron-forward" size={22} color={Colors.darkPurple} />
               </Pressable>
             </View>
@@ -91,7 +91,7 @@ export default function CalendarPicker({ value, onChange, initialViewDate, title
                 const disabled = day > today;
                 const isSelected = selectedKey === toDateKey(day);
                 return (
-                  <Pressable key={toDateKey(day)} disabled={disabled} onPress={() => { onChange(day); closeCalendar(); }} style={[styles.dayCell, isSelected ? styles.selectedDay : null]}>
+                  <Pressable key={toDateKey(day)} disabled={disabled} onPress={() => { onChange(localCalendarDate(day.getFullYear(), day.getMonth(), day.getDate())); closeCalendar(); }} style={[styles.dayCell, isSelected ? styles.selectedDay : null]}>
                     <Text style={[styles.dayText, disabled ? styles.disabledDayText : null, isSelected ? styles.selectedDayText : null]}>{day.getDate()}</Text>
                   </Pressable>
                 );
@@ -107,7 +107,7 @@ export default function CalendarPicker({ value, onChange, initialViewDate, title
 function MonthYearSelector({ viewDate, onChange, onDone }: { viewDate: Date; onChange: (date: Date) => void; onDone: () => void }) {
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: currentYear - 1940 + 1 }, (_, index) => currentYear - index);
-  return <View><View style={styles.selectorHeader}><Text style={styles.selectorTitle}>Choose month and year</Text><Pressable accessibilityRole="button" onPress={onDone}><Text style={styles.done}>Done</Text></Pressable></View><View style={styles.monthGrid}>{months.map((month, index) => <Pressable key={month} onPress={() => onChange(new Date(viewDate.getFullYear(), index, 1))} style={[styles.monthOption, viewDate.getMonth() === index ? styles.selectedOption : null]}><Text style={[styles.monthOptionText, viewDate.getMonth() === index ? styles.selectedOptionText : null]}>{month.slice(0, 3)}</Text></Pressable>)}</View><Text style={styles.yearLabel}>Year</Text><ScrollView style={styles.yearList} contentContainerStyle={styles.yearGrid} showsVerticalScrollIndicator={false}>{years.map((year) => <Pressable key={year} onPress={() => onChange(new Date(year, viewDate.getMonth(), 1))} style={[styles.yearOption, viewDate.getFullYear() === year ? styles.selectedOption : null]}><Text style={[styles.monthOptionText, viewDate.getFullYear() === year ? styles.selectedOptionText : null]}>{year}</Text></Pressable>)}</ScrollView></View>;
+  return <View><View style={styles.selectorHeader}><Text style={styles.selectorTitle}>Choose month and year</Text><Pressable accessibilityRole="button" onPress={onDone}><Text style={styles.done}>Done</Text></Pressable></View><View style={styles.monthGrid}>{months.map((month, index) => <Pressable key={month} onPress={() => onChange(localCalendarDate(viewDate.getFullYear(), index, 1))} style={[styles.monthOption, viewDate.getMonth() === index ? styles.selectedOption : null]}><Text style={[styles.monthOptionText, viewDate.getMonth() === index ? styles.selectedOptionText : null]}>{month.slice(0, 3)}</Text></Pressable>)}</View><Text style={styles.yearLabel}>Year</Text><ScrollView style={styles.yearList} contentContainerStyle={styles.yearGrid} showsVerticalScrollIndicator={false}>{years.map((year) => <Pressable key={year} onPress={() => onChange(localCalendarDate(year, viewDate.getMonth(), 1))} style={[styles.yearOption, viewDate.getFullYear() === year ? styles.selectedOption : null]}><Text style={[styles.monthOptionText, viewDate.getFullYear() === year ? styles.selectedOptionText : null]}>{year}</Text></Pressable>)}</ScrollView></View>;
 }
 
 const styles = StyleSheet.create({
