@@ -4,8 +4,8 @@ from sqlalchemy import delete, select
 from app.core.security import create_access_token, create_refresh_token, hash_password, hash_token, verify_password
 from app.dependencies import CurrentUser, DB
 from app.models.models import CycleHistory, MoodEntry, Notification, Period, Profile, RefreshToken, User
-from app.schemas.api import CalendarPeriodResponse, CycleCalendarResponse, CyclePredictionInput, CyclePredictionResponse, LoginInput, MoodInput, MoodQuoteResponse, MoodResponse, NotificationResponse, PeriodDayInput, PeriodInput, PeriodResponse, ProfileInput, ProfileResponse, ReadUpdate, RefreshInput, RegisterInput, SetupInput, TokenResponse, UserResponse
-from app.services.cycles import cycle_summary, model_histories, set_period_day, setup_period_history
+from app.schemas.api import CalendarPeriodResponse, CycleCalendarResponse, CyclePredictionInput, CyclePredictionResponse, LoginInput, MoodInput, MoodQuoteResponse, MoodResponse, NotificationResponse, PeriodDayInput, PeriodInput, PeriodResponse, PeriodStartInput, ProfileInput, ProfileResponse, ReadUpdate, RefreshInput, RegisterInput, SetupInput, TokenResponse, UserResponse
+from app.services.cycles import cycle_summary, historical_phase_ranges, model_histories, phase_ranges_for_cycle, set_period_day, set_period_start, setup_period_history
 from app.services.ml_prediction import predict_cycle_length
 from app.services.mood_quotes import get_random_mood_quote
 
@@ -89,12 +89,15 @@ async def delete_period(period_id: str, user: CurrentUser, db: DB):
 @router.post("/cycles/period-days", response_model=CycleCalendarResponse)
 async def log_period_day(payload: PeriodDayInput, user: CurrentUser, db: DB):
     periods = await set_period_day(db, user.id, payload.day, payload.is_period)
-    prediction = await saved_ml_cycle_prediction(user, db)
-    return {"actual_periods": periods, "prediction": prediction}
+    return await calendar_payload(user, db, periods)
+@router.post("/cycles/period-start", response_model=CycleCalendarResponse)
+async def log_period_start(payload: PeriodStartInput, user: CurrentUser, db: DB):
+    periods = await set_period_start(db, user.id, payload.start_date, payload.is_started)
+    return await calendar_payload(user, db, periods)
 @router.get("/cycles/calendar", response_model=CycleCalendarResponse)
 async def calendar(user: CurrentUser, db: DB):
     actual = list((await db.scalars(select(Period).where(Period.user_id == user.id).order_by(Period.start_date.desc()))).all())
-    return {"actual_periods": actual, "prediction": await saved_ml_cycle_prediction(user, db)}
+    return await calendar_payload(user, db, actual)
 @router.get("/cycles/summary")
 async def summary(user: CurrentUser, db: DB): return await cycle_summary(db, user.id)
 @router.get("/cycles/prediction")
@@ -120,15 +123,26 @@ async def saved_ml_cycle_prediction(user: CurrentUser, db: DB):
     latest = await db.scalar(select(Period).where(Period.user_id == user.id).order_by(Period.start_date.desc()))
     cycle_days = int(prediction.cycle_length_days)
     period_days = max(1, int(round(prediction.period_length_days)))
+    # The one model prediction belongs to the cycle after the latest real
+    # start. Never advance stale predictions into fabricated historical cycles.
     next_period = latest.start_date + timedelta(days=cycle_days) if latest else None
-    while next_period and next_period <= today:
-        next_period += timedelta(days=cycle_days)
     cycle_day = None; phase = None
     if latest:
         cycle_day = ((today - latest.start_date).days % cycle_days) + 1
         phase = "menstrual" if cycle_day <= period_days else "follicular" if cycle_day <= 13 else "ovulation" if cycle_day <= 16 else "luteal"
     interval = prediction.prediction_interval
-    return {"predicted_cycle_length_days": prediction.cycle_length_days, "predicted_period_length_days": prediction.period_length_days, "cycle_prediction_source": "xgboost" if prediction.prediction_method == "machine_learning" else "fallback", "period_prediction_source": "previous_period_average", "prediction_method": prediction.prediction_method, "prediction_status": prediction.prediction_status, "prediction_interval": {"lower_days": interval.lower_days, "upper_days": interval.upper_days, "coverage": interval.coverage} if interval else None, "model_version": prediction.model_version, "last_period_start": latest.start_date if latest else None, "next_expected_period": next_period, "days_until_period": (next_period - today).days if next_period else None, "cycle_day": cycle_day, "phase": phase}
+    return {"predicted_cycle_length_days": prediction.cycle_length_days, "predicted_period_length_days": period_days, "cycle_prediction_source": "xgboost" if prediction.prediction_method == "machine_learning" else "fallback", "period_prediction_source": "previous_period_average", "prediction_method": prediction.prediction_method, "prediction_status": prediction.prediction_status, "prediction_interval": {"lower_days": interval.lower_days, "upper_days": interval.upper_days, "coverage": interval.coverage} if interval else None, "model_version": prediction.model_version, "last_period_start": latest.start_date if latest else None, "next_expected_period": next_period, "days_until_period": (next_period - today).days if next_period else None, "cycle_day": cycle_day, "phase": phase}
+
+async def calendar_payload(user: CurrentUser, db: DB, actual_periods: list[Period]) -> dict:
+    prediction = await saved_ml_cycle_prediction(user, db)
+    ranges = await historical_phase_ranges(db, user.id, date.today())
+    next_start = prediction["next_expected_period"]
+    # A prediction is rendered only in the future. When it has elapsed, it is
+    # deliberately not turned into historical data; a user confirmation is
+    # required to create the next actual cycle.
+    if next_start and next_start > date.today():
+        ranges.extend(phase_ranges_for_cycle(next_start, int(prediction["predicted_cycle_length_days"]), int(prediction["predicted_period_length_days"]), "future_prediction"))
+    return {"actual_periods": actual_periods, "phase_ranges": ranges, "prediction": prediction}
 @router.post("/cycles/ml-prediction", response_model=CyclePredictionResponse)
 async def ml_cycle_prediction(payload: CyclePredictionInput, user: CurrentUser):
     del user  # authentication is required; the client controls only its own submitted values.
@@ -142,7 +156,7 @@ async def ml_cycle_prediction(payload: CyclePredictionInput, user: CurrentUser):
         period_lengths_oldest_to_newest=[payload.prev_3_period_length, payload.prev_2_period_length, payload.prev_1_period_length],
     )
     interval = prediction.prediction_interval
-    return CyclePredictionResponse(predicted_cycle_length_days=prediction.cycle_length_days, predicted_period_length_days=prediction.period_length_days, cycle_prediction_source="xgboost" if prediction.prediction_method == "machine_learning" else "fallback", prediction_method=prediction.prediction_method, prediction_status=prediction.prediction_status, prediction_interval={"lower_days": interval.lower_days, "upper_days": interval.upper_days, "coverage": interval.coverage} if interval else None, model_version=prediction.model_version)
+    return CyclePredictionResponse(predicted_cycle_length_days=prediction.cycle_length_days, predicted_period_length_days=max(1, int(round(prediction.period_length_days))), cycle_prediction_source="xgboost" if prediction.prediction_method == "machine_learning" else "fallback", prediction_method=prediction.prediction_method, prediction_status=prediction.prediction_status, prediction_interval={"lower_days": interval.lower_days, "upper_days": interval.upper_days, "coverage": interval.coverage} if interval else None, model_version=prediction.model_version)
 
 @router.get("/moods", response_model=list[MoodResponse])
 async def moods(user: CurrentUser, db: DB, limit: int = 100): return (await db.scalars(select(MoodEntry).where(MoodEntry.user_id == user.id).order_by(MoodEntry.logged_at.desc()).limit(min(limit, 100)))).all()

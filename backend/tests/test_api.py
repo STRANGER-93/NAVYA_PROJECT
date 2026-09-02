@@ -61,7 +61,7 @@ def test_calendar_uses_only_actual_days_and_rebuilds_after_edits(authenticated_c
     assert setup.status_code == 200
     actual = authenticated_client.get("/api/v1/cycles/calendar").json()["actual_periods"]
     assert [(row["start_date"], row["end_date"], row["source"]) for row in actual] == [
-        ("2026-08-25", "2026-08-29", "onboarding"), ("2026-07-28", "2026-08-01", "onboarding"), ("2026-06-29", "2026-07-03", "onboarding"),
+        ("2026-08-25", "2026-08-29", "onboarding"), ("2026-07-28", "2026-08-01", "onboarding"), ("2026-06-29", "2026-07-04", "onboarding"),
     ]
     for day in ("2026-09-21", "2026-09-22", "2026-09-23", "2026-09-24"):
         response = authenticated_client.post("/api/v1/cycles/period-days", json={"day": day, "is_period": True})
@@ -72,6 +72,38 @@ def test_calendar_uses_only_actual_days_and_rebuilds_after_edits(authenticated_c
     assert response.status_code == 200
     starts = [row["start_date"] for row in response.json()["actual_periods"]]
     assert "2026-09-21" in starts and "2026-09-23" in starts
+
+
+def test_calendar_reconstructs_phases_and_actual_start_replaces_prediction(authenticated_client: TestClient):
+    setup = authenticated_client.put("/api/v1/profile/setup", json={
+        "date_of_birth": "2000-01-01", "menarche_age": 13, "height_cm": 165, "weight_kg": 60,
+        "sleep_hours": 7, "stress_level": 3, "exercise_frequency": 1, "uses_medication_or_contraceptive": False,
+        "last_period_start_date": "2026-08-25", "cycle_lengths": [29, 31, 30], "period_lengths": [5, 4, 5],
+    })
+    assert setup.status_code == 200
+    before = authenticated_client.get("/api/v1/cycles/calendar")
+    assert before.status_code == 200
+    body = before.json()
+    # The three only historical starts are exactly the ones reconstructable
+    # from the onboarding anchor and its supplied cycle lengths.
+    assert [row["start_date"] for row in body["actual_periods"]] == ["2026-08-25", "2026-07-27", "2026-06-26"]
+    phases = {(item["start_date"], item["phase"], item["source"]) for item in body["phase_ranges"]}
+    assert ("2026-08-25", "menstrual", "historical_estimate") in phases
+    assert ("2026-08-30", "follicular", "historical_estimate") in phases
+    assert body["prediction"]["predicted_period_length_days"] == 5
+
+    # Logging an early real start completes the cycle, removes the old future
+    # prediction, rolls the history, and produces one new future prediction.
+    logged = authenticated_client.post("/api/v1/cycles/period-start", json={"start_date": "2026-09-20", "is_started": True})
+    assert logged.status_code == 200
+    updated = logged.json()
+    assert updated["actual_periods"][0]["start_date"] == "2026-09-20"
+    assert updated["prediction"]["last_period_start"] == "2026-09-20"
+    assert updated["prediction"]["next_expected_period"] != body["prediction"]["next_expected_period"]
+    assert all(item["source"] != "future_prediction" or item["start_date"] != body["prediction"]["next_expected_period"] for item in updated["phase_ranges"])
+    removed = authenticated_client.post("/api/v1/cycles/period-start", json={"start_date": "2026-09-20", "is_started": False})
+    assert removed.status_code == 200
+    assert removed.json()["prediction"]["last_period_start"] == "2026-08-25"
 
 
 def test_moods_quotes_notifications_and_account(authenticated_client: TestClient):

@@ -44,9 +44,18 @@ class PeriodResponse(PeriodInput): id: str; created_at: datetime; source: str
 class PeriodDayInput(BaseModel):
     day: date
     is_period: bool
+class PeriodStartInput(BaseModel):
+    start_date: date
+    is_started: bool
 class CalendarPeriodResponse(PeriodResponse): pass
+class CalendarPhaseRange(BaseModel):
+    start_date: date
+    end_date: date
+    phase: str
+    source: str
 class CycleCalendarResponse(BaseModel):
     actual_periods: list[CalendarPeriodResponse]
+    phase_ranges: list[CalendarPhaseRange]
     prediction: dict
 class MoodInput(BaseModel): mood: str = Field(pattern="^(happy|sad|angry|anxious|tired|stressed)$"); note: str | None = Field(default=None, max_length=2000)
 class MoodResponse(MoodInput): id: str; logged_at: datetime
