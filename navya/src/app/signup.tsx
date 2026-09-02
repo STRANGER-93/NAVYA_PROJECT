@@ -3,13 +3,11 @@ import {
   View,
   Text,
   Pressable,
-  ScrollView,
   Alert,
   TextInput,
 } from "react-native";
 import { useRouter } from "expo-router";
 
-import authStyles from "../styles/authStyles";
 
 import BackButton from "../components/auth/BackButton";
 import AuthHeader from "../components/auth/AuthHeader";

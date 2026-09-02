@@ -7,8 +7,6 @@ import {
   Pressable,
 } from "react-native";
 
-import authStyles from "../../styles/authStyles";
-
 type Props = {
   visible: boolean;
   onClose: () => void;

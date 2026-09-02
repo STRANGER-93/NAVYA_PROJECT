@@ -16,8 +16,8 @@ export default function SetupCompleteScreen() {
         <View style={styles.checkCircle}>
           <Ionicons name="checkmark" size={62} color={Colors.white} />
         </View>
-        <Text style={styles.title}>You're all set!</Text>
-        <Text style={styles.message}>Your personalized cycle journey starts here.{"\n"}NAVYA's ready to learn from you.{"\n\n"}You can always change dynamic setup info from the Edit Profile section.</Text>
+        <Text style={styles.title}>You{"'"}re all set!</Text>
+        <Text style={styles.message}>Your personalized cycle journey starts here.{"\n"}NAVYA{"'"}s ready to learn from you.{"\n\n"}You can always change dynamic setup info from the Edit Profile section.</Text>
         <PrimaryButton title="Go to Dashboard" onPress={() => router.replace("/dashboard")} style={styles.button} />
       </View>
     </SafeAreaView>

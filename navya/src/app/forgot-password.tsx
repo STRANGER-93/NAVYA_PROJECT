@@ -1,10 +1,8 @@
 import React, { useState } from "react";
 import {
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -76,7 +74,7 @@ export default function ForgotPasswordScreen() {
 
         <View style={styles.formHeader}>
           <Text style={styles.title}>Reset Password</Text>
-          <Text style={styles.subtitle}>Enter your email and we'll send you a reset link.</Text>
+          <Text style={styles.subtitle}>Enter your email and we{"'"}ll send you a reset link.</Text>
         </View>
 
         <View>
@@ -88,7 +86,7 @@ export default function ForgotPasswordScreen() {
               setEmail(value);
               if (error) setError(null);
             }}
-            placeholder="aarya@example.com"
+            placeholder="saksham@example.com"
             placeholderTextColor="#9B8BA9"
             keyboardType="email-address"
             autoCapitalize="none"
