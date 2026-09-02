@@ -47,6 +47,8 @@ class CycleHistory(Base):
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     cycle_length_days: Mapped[int] = mapped_column(Integer)
     period_length_days: Mapped[int] = mapped_column(Integer)
+    source: Mapped[str] = mapped_column(String(20), default="onboarding")
+    cycle_end_date: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
     recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 class Period(Base, Timestamped):
@@ -55,7 +57,16 @@ class Period(Base, Timestamped):
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     start_date: Mapped[date] = mapped_column(Date)
     end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    source: Mapped[str] = mapped_column(String(20), default="user_logged")
     __table_args__ = (UniqueConstraint("user_id", "start_date", name="uq_period_user_start"),)
+
+class PeriodDay(Base, Timestamped):
+    __tablename__ = "period_days"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uuid)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    day: Mapped[date] = mapped_column(Date)
+    source: Mapped[str] = mapped_column(String(20), default="user_logged")
+    __table_args__ = (UniqueConstraint("user_id", "day", name="uq_period_day_user_day"),)
 
 class MoodEntry(Base, Timestamped):
     __tablename__ = "mood_entries"

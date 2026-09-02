@@ -54,7 +54,7 @@ def test_saved_prediction_uses_profile_history_and_handles_incomplete_profile(au
     setup = authenticated_client.put("/api/v1/profile/setup", json={
         "date_of_birth": "2000-01-01", "menarche_age": 13, "height_cm": 165, "weight_kg": 60,
         "sleep_hours": 7, "stress_level": 3, "exercise_frequency": 1,
-        "uses_medication_or_contraceptive": False, "cycle_lengths": [27, 29, 28], "period_lengths": [5, 5, 6],
+        "uses_medication_or_contraceptive": False, "last_period_start_date": "2026-08-25", "cycle_lengths": [27, 29, 28], "period_lengths": [5, 5, 6],
     })
     assert setup.status_code == 200
     saved = authenticated_client.get("/api/v1/cycles/prediction")

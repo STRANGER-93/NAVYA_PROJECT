@@ -104,8 +104,7 @@ export default function SetupScreen() {
     if (bmi === null) return;
 
     try {
-      await api.put("/profile/setup", { date_of_birth: dateOfBirth?.toISOString().slice(0, 10), menarche_age: Number(menarcheAge), height_cm: (Number(heightFeet) * 12 + Number(heightInches)) * 2.54, weight_kg: Number(weightKg), sleep_hours: Number(sleepHours), stress_level: stressLevel, exercise_frequency: exerciseFrequency, uses_medication_or_contraceptive: medicationContraceptive === 1, cycle_lengths: cycleLengths.map(Number), period_lengths: periodLengths.map(Number) });
-      await api.post("/periods", { start_date: lastPeriodDate?.toISOString().slice(0, 10) });
+      await api.put("/profile/setup", { last_period_start_date: lastPeriodDate?.toISOString().slice(0, 10), date_of_birth: dateOfBirth?.toISOString().slice(0, 10), menarche_age: Number(menarcheAge), height_cm: (Number(heightFeet) * 12 + Number(heightInches)) * 2.54, weight_kg: Number(weightKg), sleep_hours: Number(sleepHours), stress_level: stressLevel, exercise_frequency: exerciseFrequency, uses_medication_or_contraceptive: medicationContraceptive === 1, cycle_lengths: cycleLengths.map(Number), period_lengths: periodLengths.map(Number) });
       await updateSetupState(true);
       updateProfile({ lastPeriodDate, cycleLengths, periodLengths, dateOfBirth, menarcheAge, heightFeet, heightInches, weightKg, sleepHours, stressLevel, exerciseFrequency, medicationContraceptive });
       router.replace("/setup-complete");
@@ -139,7 +138,7 @@ export default function SetupScreen() {
 }
 
 function CycleHistoryStep({ lastPeriodDate, cycleLengths, onDateChange, onCycleChange, onCycleInfoPress }: { lastPeriodDate: Date | null; cycleLengths: string[]; onDateChange: (date: Date) => void; onCycleChange: (index: number, value: string) => void; onCycleInfoPress: (index: number) => void }) {
-  return <View style={styles.step}><View><Text style={styles.heading}>When did your last period start?</Text><Text style={styles.subtitle}>We'll use this to calculate your upcoming cycle.</Text></View><Field label="Last Period Start Date"><CalendarPicker value={lastPeriodDate} onChange={onDateChange} /></Field><View style={styles.sectionDivider} /><View><Text style={styles.sectionTitle}>Your previous cycle lengths</Text><Text style={styles.smallSubtitle}>Don't remember exact lengths? Approximate values are okay.</Text></View><View style={styles.historyFields}>{cycleLengths.map((value, index) => <HistoryDaysField key={index} label={`Previous Cycle ${index + 1}`} value={value} onChange={(text) => onCycleChange(index, text)} onInfoPress={() => onCycleInfoPress(index)} />)}</View></View>;
+  return <View style={styles.step}><View><Text style={styles.heading}>When did your last period start?</Text><Text style={styles.subtitle}>We’ll use this to calculate your upcoming cycle.</Text></View><Field label="Last Period Start Date"><CalendarPicker value={lastPeriodDate} onChange={onDateChange} /></Field><View style={styles.sectionDivider} /><View><Text style={styles.sectionTitle}>Your previous cycle lengths</Text><Text style={styles.smallSubtitle}>Don’t remember exact lengths? Approximate values are okay.</Text></View><View style={styles.historyFields}>{cycleLengths.map((value, index) => <HistoryDaysField key={index} label={`Previous Cycle ${index + 1}`} value={value} onChange={(text) => onCycleChange(index, text)} onInfoPress={() => onCycleInfoPress(index)} />)}</View></View>;
 }
 
 function PeriodHistoryStep({ values, onChange }: { values: string[]; onChange: (index: number, value: string) => void }) {

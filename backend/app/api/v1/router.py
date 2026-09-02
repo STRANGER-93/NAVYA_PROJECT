@@ -4,8 +4,8 @@ from sqlalchemy import delete, select
 from app.core.security import create_access_token, create_refresh_token, hash_password, hash_token, verify_password
 from app.dependencies import CurrentUser, DB
 from app.models.models import CycleHistory, MoodEntry, Notification, Period, Profile, RefreshToken, User
-from app.schemas.api import CyclePredictionInput, CyclePredictionResponse, LoginInput, MoodInput, MoodQuoteResponse, MoodResponse, NotificationResponse, PeriodInput, PeriodResponse, ProfileInput, ProfileResponse, ReadUpdate, RefreshInput, RegisterInput, SetupInput, TokenResponse, UserResponse
-from app.services.cycles import cycle_summary
+from app.schemas.api import CalendarPeriodResponse, CycleCalendarResponse, CyclePredictionInput, CyclePredictionResponse, LoginInput, MoodInput, MoodQuoteResponse, MoodResponse, NotificationResponse, PeriodDayInput, PeriodInput, PeriodResponse, ProfileInput, ProfileResponse, ReadUpdate, RefreshInput, RegisterInput, SetupInput, TokenResponse, UserResponse
+from app.services.cycles import cycle_summary, model_histories, set_period_day, setup_period_history
 from app.services.ml_prediction import predict_cycle_length
 from app.services.mood_quotes import get_random_mood_quote
 
@@ -60,11 +60,10 @@ async def update_profile(payload: ProfileInput, user: CurrentUser, db: DB):
 @router.put("/profile/setup", response_model=ProfileResponse)
 async def setup(payload: SetupInput, user: CurrentUser, db: DB):
     profile = await db.get(Profile, user.id)
-    for key, value in payload.model_dump(exclude={"cycle_lengths", "period_lengths"}, exclude_unset=True).items():
+    for key, value in payload.model_dump(exclude={"cycle_lengths", "period_lengths", "last_period_start_date"}, exclude_unset=True).items():
         if key == "full_name": user.full_name = value.strip()
         else: setattr(profile, key, value)
-    await db.execute(delete(CycleHistory).where(CycleHistory.user_id == user.id))
-    for cycle, period in zip(payload.cycle_lengths, payload.period_lengths): db.add(CycleHistory(user_id=user.id, cycle_length_days=cycle, period_length_days=period))
+    await setup_period_history(db, user.id, payload.last_period_start_date, payload.cycle_lengths, payload.period_lengths)
     user.setup_completed = True; await db.commit(); return profile_response(user, profile)
 
 @router.get("/periods", response_model=list[PeriodResponse])
@@ -74,7 +73,8 @@ async def create_period(payload: PeriodInput, user: CurrentUser, db: DB):
     if payload.end_date and payload.end_date < payload.start_date: raise HTTPException(422, "End date cannot precede start date")
     if await db.scalar(select(Period).where(Period.user_id == user.id, Period.start_date == payload.start_date)):
         raise HTTPException(409, "A period record already exists for this start date")
-    period = Period(user_id=user.id, **payload.model_dump()); db.add(period); await db.commit(); await db.refresh(period); return period
+    # Retained for compatibility. The calendar uses /cycles/period-days so each day is editable.
+    period = Period(user_id=user.id, source="user_logged", **payload.model_dump()); db.add(period); await db.commit(); await db.refresh(period); return period
 @router.patch("/periods/{period_id}", response_model=PeriodResponse)
 async def update_period(period_id: str, payload: PeriodInput, user: CurrentUser, db: DB):
     period = await db.scalar(select(Period).where(Period.id == period_id, Period.user_id == user.id))
@@ -86,17 +86,21 @@ async def delete_period(period_id: str, user: CurrentUser, db: DB):
     period = await db.scalar(select(Period).where(Period.id == period_id, Period.user_id == user.id))
     if not period: raise HTTPException(404, "Period record not found")
     await db.delete(period); await db.commit(); return Response(status_code=204)
+@router.post("/cycles/period-days", response_model=CycleCalendarResponse)
+async def log_period_day(payload: PeriodDayInput, user: CurrentUser, db: DB):
+    periods = await set_period_day(db, user.id, payload.day, payload.is_period)
+    prediction = await saved_ml_cycle_prediction(user, db)
+    return {"actual_periods": periods, "prediction": prediction}
+@router.get("/cycles/calendar", response_model=CycleCalendarResponse)
+async def calendar(user: CurrentUser, db: DB):
+    actual = list((await db.scalars(select(Period).where(Period.user_id == user.id).order_by(Period.start_date.desc()))).all())
+    return {"actual_periods": actual, "prediction": await saved_ml_cycle_prediction(user, db)}
 @router.get("/cycles/summary")
 async def summary(user: CurrentUser, db: DB): return await cycle_summary(db, user.id)
 @router.get("/cycles/prediction")
 async def saved_ml_cycle_prediction(user: CurrentUser, db: DB):
     profile = await db.get(Profile, user.id)
-    histories = list((await db.scalars(select(CycleHistory).where(CycleHistory.user_id == user.id).order_by(CycleHistory.recorded_at.desc(), CycleHistory.id.desc()).limit(3))).all())
-    # The database query is newest -> oldest. Convert it so the model helper can
-    # explicitly map the newest value to prev_cycle_1 in its oldest -> newest contract.
-    histories_oldest_to_newest = list(reversed(histories))
-    cycle_lengths = [row.cycle_length_days for row in histories_oldest_to_newest]
-    period_lengths = [row.period_length_days for row in histories_oldest_to_newest]
+    cycle_lengths, period_lengths = await model_histories(db, user.id)
     today = date.today()
     age = None
     if profile and profile.date_of_birth:
@@ -117,6 +121,8 @@ async def saved_ml_cycle_prediction(user: CurrentUser, db: DB):
     cycle_days = int(prediction.cycle_length_days)
     period_days = max(1, int(round(prediction.period_length_days)))
     next_period = latest.start_date + timedelta(days=cycle_days) if latest else None
+    while next_period and next_period <= today:
+        next_period += timedelta(days=cycle_days)
     cycle_day = None; phase = None
     if latest:
         cycle_day = ((today - latest.start_date).days % cycle_days) + 1

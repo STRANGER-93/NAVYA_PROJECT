@@ -19,6 +19,7 @@ class ProfileInput(BaseModel):
     exercise_frequency: int | None = Field(default=None, ge=0, le=2); uses_medication_or_contraceptive: bool | None = None
     avatar_data: str | None = Field(default=None, max_length=3_000_000)
 class SetupInput(ProfileInput):
+    last_period_start_date: date
     cycle_lengths: list[int] = Field(min_length=1, max_length=12)
     period_lengths: list[int] = Field(min_length=1, max_length=12)
     @field_validator("cycle_lengths")
@@ -39,7 +40,14 @@ class SetupInput(ProfileInput):
 class ProfileResponse(ProfileInput): email: EmailStr; setup_completed: bool
 
 class PeriodInput(BaseModel): start_date: date; end_date: date | None = None
-class PeriodResponse(PeriodInput): id: str; created_at: datetime
+class PeriodResponse(PeriodInput): id: str; created_at: datetime; source: str
+class PeriodDayInput(BaseModel):
+    day: date
+    is_period: bool
+class CalendarPeriodResponse(PeriodResponse): pass
+class CycleCalendarResponse(BaseModel):
+    actual_periods: list[CalendarPeriodResponse]
+    prediction: dict
 class MoodInput(BaseModel): mood: str = Field(pattern="^(happy|sad|angry|anxious|tired|stressed)$"); note: str | None = Field(default=None, max_length=2000)
 class MoodResponse(MoodInput): id: str; logged_at: datetime
 class MoodQuoteResponse(BaseModel): id: str; mood: str; quote: str
