@@ -23,7 +23,8 @@ function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
   return <svg {...common}>{paths[name]}</svg>;
 }
 
-const apkUrl = import.meta.env.VITE_NAVYA_APK_URL || "/navya.apk";
+const releaseApkUrl = "https://github.com/STRANGER-93/NAVYA_PROJECT/releases/download/v2.0.0/navya-apk-2.0.0.apk";
+const apkUrl = import.meta.env.VITE_NAVYA_APK_URL || releaseApkUrl;
 function DownloadLink({ className = "", children }: { className?: string; children: ReactNode }) {
   return <a className={className} href={apkUrl || "#download"} {...(apkUrl ? { download: true } : {})}>{children}</a>;
 }

@@ -15,7 +15,7 @@ For Vercel Pro, direct CLI deployment can upload the APK because the static file
 1. Create a GitHub repository and push this `webapp` folder, excluding `public/navya.apk`.
 2. In Vercel, select **Add New → Project**, import the repository, and set the root directory to `webapp` if the repository contains the larger WOMEN_WELLNESS project.
 3. Vercel should detect **Vite**. Confirm Build Command is `npm run build` and Output Directory is `dist`.
-4. Under **Environment Variables**, add `VITE_NAVYA_APK_URL` with the direct public URL to the uploaded APK. Enable it for Production (and Preview if desired).
+4. Under **Environment Variables**, add `VITE_NAVYA_APK_URL` with the direct public URL to the uploaded APK. For NAVYA Version 2, use `https://github.com/STRANGER-93/NAVYA_PROJECT/releases/download/v2.0.0/navya-apk-2.0.0.apk`. Enable it for Production (and Preview if desired).
 5. Click **Deploy**. Vercel will provide a public URL.
 
 ## CLI deployment
